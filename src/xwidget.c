@@ -437,7 +437,6 @@ xwidget_slider_changed (GtkRange *range,
 gboolean
 offscreen_damage_event (GtkWidget *widget, GdkEvent *event, gpointer data)
 {
-  //TODO this is wrong! should just queu a redraw of onscreen widget
   gtk_widget_queue_draw (GTK_WIDGET (data));
   return FALSE;
 }
