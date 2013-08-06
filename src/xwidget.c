@@ -769,15 +769,13 @@ DEFUN ("xwgir-xwidget-call-method", Fxwgir_xwidget_call_method,  Sxwgir_xwidget_
   GIArgument in_args[20];
 
 
-  struct xwidget* xw; 
-  if (NILP (xwidget)) { printf("ERROR xwidget nil\n"); return Qnil; };  
-  xw = XXWIDGET(xwidget);                                               
-  if(NULL == xw) printf("ERROR xw is 0\n");                               
-  char* namespace = SDATA(Fcar(Fget(xw->type, QCxwgir_class)));
+  struct xwidget* xw = XXWIDGET (xwidget);
+
+  char *namespace = SDATA (Fcar (Fget (xw->type, QCxwgir_class)));
   //we need the concrete widget, which happens in 2 ways depending on OSR or not TODO
-  GtkWidget* widget = NULL;
+  GtkWidget *widget = NULL;
   if(NULL == xw->widget_osr) {
-    widget = xwidget_view_lookup (xw, XWINDOW(FRAME_SELECTED_WINDOW (SELECTED_FRAME ()))) -> widget; 
+    widget = xwidget_view_lookup (xw, XWINDOW (FRAME_SELECTED_WINDOW (SELECTED_FRAME ()))) -> widget;
   } else {
     widget = xw->widget_osr;
   }
@@ -794,30 +792,27 @@ DEFUN ("xwgir-xwidget-call-method", Fxwgir_xwidget_call_method,  Sxwgir_xwidget_
   GIFunctionInfo* f_info = g_object_info_find_method (obj_info, SDATA(method));
 
   //loop over args, convert from lisp to primitive type, given arg introspection data
-  //TODO g_callable_info_get_n_args(f_info) should match
   int argscount = XFASTINT(Flength(arguments));
   if(argscount !=  g_callable_info_get_n_args(f_info)){
     printf("xwgir call method arg count doesn match! \n");
     return Qnil;
   }
-  int i;
-  Lisp_Object n;
-  for (i = 1; i < argscount + 1; ++i)
-    {
-        XSETFASTINT (n, i - 1);
-        xwgir_convert_lisp_to_gir_arg(&in_args[i], g_callable_info_get_arg(f_info, i - 1), Fnth(n, arguments));
-    }
 
   in_args[0].v_pointer = widget;
-  if(g_function_info_invoke(f_info,
-                            in_args, argscount + 1,
-                            NULL, 0,
-                            &return_value,
-                            &error)) { 
-    //g_error("ERROR: %s\n", error->message);
-    printf("invokation error\n");
-     return Qnil; 
-   }   
+  int i = 0;
+  for (Lisp_Object tail = arguments; CONSP (tail); i++, tail = XCDR (tail)) {
+    xwgir_convert_lisp_to_gir_arg (&in_args[i + 1], g_callable_info_get_arg (f_info, i), XCAR (tail));
+  }
+
+  if(!g_function_info_invoke (f_info,
+                              in_args, argscount + 1,
+                              NULL, 0,
+                              &return_value,
+                              &error)) {
+    printf("invokation error %s\n", error->message);
+    return Qnil;
+  }
+  
   return Qt;
 }
 
