@@ -113,6 +113,13 @@ allocate_xwidget_view (void)
 #define XSETXWIDGET(a, b) (XSETPSEUDOVECTOR (a, b, PVEC_XWIDGET))
 #define XSETXWIDGET_VIEW(a, b) (XSETPSEUDOVECTOR (a, b, PVEC_XWIDGET_VIEW))
 
+struct Lisp_GObject*
+allocate_gobject (void)
+{
+  return ALLOCATE_PSEUDOVECTOR (struct Lisp_GObject, type_tag, PVEC_GOBJECT);
+}
+#define XSETGOBJECT(a, b) (XSETPSEUDOVECTOR (a, b, PVEC_GOBJECT))
+
 Lisp_Object Qxwidget;
 Lisp_Object QCxwidget;
 Lisp_Object QCtitle;
@@ -124,7 +131,7 @@ Lisp_Object Qxwidget_send_keyboard_event;
 Lisp_Object QCxwgir_class;
 Lisp_Object Qbutton, Qtoggle, Qslider, Qsocket, Qsocket_osr, Qcairo, Qxwgir,
   Qwebkit_osr, QCplist;
-Lisp_Object Qxwidgetp, Qxwidget_view_p;
+Lisp_Object Qxwidgetp, Qxwidget_view_p, Qgobjectp;
 
 
 extern Lisp_Object  QCtype;

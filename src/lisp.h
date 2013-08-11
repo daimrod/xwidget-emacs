@@ -539,6 +539,7 @@ enum pvec_type
 #ifdef HAVE_XWIDGETS
   PVEC_XWIDGET,
   PVEC_XWIDGET_VIEW,
+  PVEC_GOBJECT,
 #endif
 
   /* These should be last, check internal_equal to see why.  */

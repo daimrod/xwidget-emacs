@@ -10,7 +10,7 @@ extern Lisp_Object Qxwidget;
 int valid_xwidget_spec_p (Lisp_Object object) ;
 
 #include <gtk/gtk.h>
-
+#include <girepository.h>
 
 /*
 each xwidget instance/model is described by this struct.
@@ -62,6 +62,21 @@ struct xwidget_view {
   long handler_id;
 };
 
+struct Lisp_GObject
+{
+  struct vectorlike_header header;
+
+  Lisp_Object type_name;
+  Lisp_Object destructor;
+
+  /* After this point, there are no Lisp_Objects any more.  */
+  /* alloc.c assumes that `type_tag' is the first such non-Lisp
+   * slot. */
+
+  GITypeTag type_tag;
+  gpointer object;
+};
+
 /* Test for xwidget pseudovector*/
 #define XWIDGETP(x) PSEUDOVECTORP (x, PVEC_XWIDGET)
 #define XXWIDGET(a) (eassert (XWIDGETP(a)), \
@@ -77,6 +92,15 @@ struct xwidget_view {
 
 #define CHECK_XWIDGET_VIEW(x) \
   CHECK_TYPE (XWIDGET_VIEW_P (x), Qxwidget_view_p, x)
+
+/* Test for gobject pseudovector */
+#define GOBJECTP(x) PSEUDOVECTORP (x, PVEC_GOBJECT)
+#define XGOBJECT(a) (eassert (GOBJECTP (a)),                         \
+                     (struct Lisp_GObject *) XUNTAG(a, Lisp_Vectorlike))
+
+#define CHECK_GOBJECT(x)                        \
+  CHECK_TYPE (GOBJECTP (x), Qgobjectp, x)
+
 
 struct xwidget_type
 {
