@@ -657,76 +657,187 @@ GtkWidget* xwgir_create(char* class, char* namespace){
 }
 
 int
-xwgir_convert_lisp_to_gir_arg(GIArgument* giarg,
-                              GIArgInfo* arginfo,
-                              Lisp_Object lisparg )
+xwgir_convert_gobject_to_lisp (GIArgument *giarg,
+                               GIArgInfo *arginfo,
+                               Lisp_Object lisparg)
 {
-
-  GITypeTag   tag;
-  gboolean    is_pointer;
-  gboolean    is_enum;
-  tag =  g_type_info_get_tag (g_arg_info_get_type (arginfo));
+  GITypeInfo *typeinfo = g_arg_info_get_type (arginfo);
+  GITypeTag tag = g_type_info_get_tag (typeinfo);
   
   switch (tag)
-    {
-    case GI_TYPE_TAG_BOOLEAN:
-      giarg->v_boolean = XFASTINT(lisparg);
-      break;
-    case GI_TYPE_TAG_INT8:
-      giarg->v_int8 = XFASTINT(lisparg);
-      break;
-    case GI_TYPE_TAG_UINT8:
-      giarg->v_uint8 = XFASTINT(lisparg);
-      break;
-    case GI_TYPE_TAG_INT16:
-      giarg->v_int16 = XFASTINT(lisparg);
-      break;
-    case GI_TYPE_TAG_UINT16:
-      giarg->v_uint16 = XFASTINT(lisparg);
-      break;
-    case GI_TYPE_TAG_INT32:
-      giarg->v_int32 = XFASTINT(lisparg);
-      break;
-    case GI_TYPE_TAG_UINT32:
-      giarg->v_uint32 = XFASTINT(lisparg);
-      break;
+  {
+    /* Basic types */
+  case GI_TYPE_TAG_VOID:
+    lisparg = Qnil;
+    break;
 
-    case GI_TYPE_TAG_INT64:
-      giarg->v_int64 = XFASTINT(lisparg);
-      break;
-    case GI_TYPE_TAG_UINT64:
-      giarg->v_uint64 = XFASTINT(lisparg);
-      break;
+  case GI_TYPE_TAG_BOOLEAN:
+    lisparg = giarg->v_boolean ? Qt : Qnil;
+    break;
 
+  case GI_TYPE_TAG_INT8:
+    XSETFASTINT (lisparg, giarg->v_int8);
+    break;
 
-    case GI_TYPE_TAG_FLOAT:
-      giarg->v_float = XFLOAT_DATA(lisparg);
-      break;
+  case GI_TYPE_TAG_UINT8:
+    XSETFASTINT (lisparg, giarg->v_uint8);
+    break;
 
-    case GI_TYPE_TAG_DOUBLE:
-      giarg->v_double = XFLOAT_DATA(lisparg);
-      break;
+  case GI_TYPE_TAG_INT16:
+    XSETFASTINT (lisparg, giarg->v_int16);
+    break;
 
-    case GI_TYPE_TAG_UTF8:
-    case GI_TYPE_TAG_FILENAME:
-      //giarg->v_string = SDATA(lisparg);
-      giarg->v_pointer = SDATA(lisparg);
-      break;
-      
-    case GI_TYPE_TAG_ARRAY:
-    case GI_TYPE_TAG_GLIST:
-    case GI_TYPE_TAG_GSLIST:
-    case GI_TYPE_TAG_GHASH:
-    case GI_TYPE_TAG_ERROR:
-    case GI_TYPE_TAG_INTERFACE:
-    case GI_TYPE_TAG_VOID:
-    case GI_TYPE_TAG_UNICHAR:
-    case GI_TYPE_TAG_GTYPE:
-      //?? i dont know how to handle these yet TODO
-      printf("failed in my lisp to gir arg conversion duties. sob!\n");
-      return -1;
-      break;
-    }
+  case GI_TYPE_TAG_UINT16:
+    XSETFASTINT (lisparg, giarg->v_uint16);
+    break;
+
+  case GI_TYPE_TAG_INT32:
+    XSETFASTINT (lisparg, giarg->v_int32);
+    break;
+
+  case GI_TYPE_TAG_UINT32:
+    XSETFASTINT (lisparg, giarg->v_uint32);
+    break;
+
+  case GI_TYPE_TAG_INT64:
+    XSETFASTINT (lisparg, giarg->v_int64);
+    break;
+
+  case GI_TYPE_TAG_UINT64:
+    XSETFASTINT (lisparg, giarg->v_uint64);
+    break;
+
+  case GI_TYPE_TAG_FLOAT:
+    lisparg = make_float (giarg->v_float);
+    break;
+
+  case GI_TYPE_TAG_DOUBLE:
+    lisparg = make_float (giarg->v_double);
+    break;
+
+  case GI_TYPE_TAG_GTYPE:
+    XSETFASTINT (lisparg, giarg->v_int);
+    break;
+
+  case GI_TYPE_TAG_UTF8:
+  case GI_TYPE_TAG_FILENAME:
+    XSETSTRING (lisparg, giarg->v_string);
+    break;
+
+  /* Non-basic types; compare with G_TYPE_TAG_IS_BASIC */
+  case GI_TYPE_TAG_ARRAY:       /* TODO */
+    lisparg = Qnil;
+    return -1;
+
+  case GI_TYPE_TAG_INTERFACE:
+  {
+    struct Lisp_GObject *gobject = allocate_gobject();
+    const char *type_name = g_type_tag_to_string (tag);
+    gobject->type_name = make_string (type_name, strlen (type_name));
+    gobject->destructor = Qnil;
+    gobject->type_tag = tag;
+    gobject->object = giarg->v_pointer;
+    XSETGOBJECT (lisparg, gobject);
+    break;
+  }
+
+  case GI_TYPE_TAG_GLIST:       /* TODO */
+  case GI_TYPE_TAG_GSLIST:      /* TODO */
+  case GI_TYPE_TAG_GHASH:       /* TODO */
+  case GI_TYPE_TAG_ERROR:       /* TODO */
+
+  /* Another basic type */
+  case GI_TYPE_TAG_UNICHAR:     /* TODO */
+    lisparg = Qnil;
+    return -1;
+  }
+
+  return 0;
+}
+
+int
+xwgir_convert_lisp_to_gobject (GIArgument *giarg,
+                               GIArgInfo *arginfo,
+                               Lisp_Object lisparg)
+{
+
+  GITypeTag   tag = g_type_info_get_tag (g_arg_info_get_type (arginfo));
+
+  switch (tag)
+  {
+  case GI_TYPE_TAG_BOOLEAN:
+    giarg->v_boolean = !NILP (lisparg);
+    break;
+
+  case GI_TYPE_TAG_INT8:
+    CHECK_NUMBER (lisparg);
+    giarg->v_int8 = XFASTINT(lisparg);
+    break;
+
+  case GI_TYPE_TAG_UINT8:
+    CHECK_NUMBER (lisparg);
+    giarg->v_uint8 = XFASTINT(lisparg);
+    break;
+
+  case GI_TYPE_TAG_INT16:
+    CHECK_NUMBER (lisparg);
+    giarg->v_int16 = XFASTINT(lisparg);
+    break;
+
+  case GI_TYPE_TAG_UINT16:
+    CHECK_NUMBER (lisparg);
+    giarg->v_uint16 = XFASTINT(lisparg);
+    break;
+
+  case GI_TYPE_TAG_INT32:
+    CHECK_NUMBER (lisparg);
+    giarg->v_int32 = XFASTINT(lisparg);
+    break;
+
+  case GI_TYPE_TAG_UINT32:
+    CHECK_NUMBER (lisparg);
+    giarg->v_uint32 = XFASTINT(lisparg);
+    break;
+
+  case GI_TYPE_TAG_INT64:
+    CHECK_NUMBER (lisparg);
+    giarg->v_int64 = XFASTINT(lisparg);
+    break;
+  case GI_TYPE_TAG_UINT64:
+    CHECK_NUMBER (lisparg);
+    giarg->v_uint64 = XFASTINT(lisparg);
+    break;
+
+  case GI_TYPE_TAG_FLOAT:
+    CHECK_NUMBER_OR_FLOAT (lisparg);
+    giarg->v_float = XFLOAT_DATA(lisparg);
+    break;
+
+  case GI_TYPE_TAG_DOUBLE:
+    CHECK_NUMBER_OR_FLOAT (lisparg);
+    giarg->v_double = XFLOAT_DATA(lisparg);
+    break;
+
+  case GI_TYPE_TAG_UTF8:
+  case GI_TYPE_TAG_FILENAME:
+    CHECK_STRING (lisparg);
+    giarg->v_string = SDATA(lisparg);
+    break;
+
+  case GI_TYPE_TAG_ARRAY:
+  case GI_TYPE_TAG_GLIST:
+  case GI_TYPE_TAG_GSLIST:
+  case GI_TYPE_TAG_GHASH:
+  case GI_TYPE_TAG_ERROR:
+  case GI_TYPE_TAG_INTERFACE:
+  case GI_TYPE_TAG_VOID:
+  case GI_TYPE_TAG_UNICHAR:
+  case GI_TYPE_TAG_GTYPE:
+    //?? i dont know how to handle these yet TODO
+    printf("failed in my lisp to gir arg conversion duties. sob!\n");
+    return -1;
+    break;
+  }
   return 0;
 }
 
@@ -749,7 +860,7 @@ refactor_attempt(){
   int i;
   for (i = 1; i < argscount + 1; ++i)
     {
-      xwgir_convert_lisp_to_gir_arg(&in_args[i], g_callable_info_get_arg(f_info, i - 1), Fnth(i - 1, arguments));
+      xwgir_convert_lisp_to_gobject(&in_args[i], g_callable_info_get_arg(f_info, i - 1), Fnth(i - 1, arguments));
     }
 
   in_args[0].v_pointer = widget;
@@ -808,7 +919,7 @@ DEFUN ("xwgir-xwidget-call-method", Fxwgir_xwidget_call_method,  Sxwgir_xwidget_
   in_args[0].v_pointer = widget;
   int i = 0;
   for (Lisp_Object tail = arguments; CONSP (tail); i++, tail = XCDR (tail)) {
-    xwgir_convert_lisp_to_gir_arg (&in_args[i + 1], g_callable_info_get_arg (f_info, i), XCAR (tail));
+    xwgir_convert_lisp_to_gobject (&in_args[i + 1], g_callable_info_get_arg (f_info, i), XCAR (tail));
   }
 
   if(!g_function_info_invoke (f_info,
