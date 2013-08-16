@@ -120,7 +120,7 @@ allocate_gobject (void)
 }
 #define XSETGOBJECT(a, b) (XSETPSEUDOVECTOR (a, b, PVEC_GOBJECT))
 
-Lisp_Object Qxwidget;
+Lisp_Object Qxwidget, Qxwidget_view, Qgobject;
 Lisp_Object QCxwidget;
 Lisp_Object QCtitle;
 Lisp_Object Qxwidget_set_keyboard_grab;

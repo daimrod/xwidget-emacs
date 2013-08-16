@@ -34,6 +34,10 @@ along with GNU Emacs.  If not, see <http://www.gnu.org/licenses/>.  */
 #include "font.h"
 #include "keymap.h"
 
+#ifdef HAVE_XWIDGETS
+#include "xwidget.h"
+#endif
+
 Lisp_Object Qnil, Qt, Qquote, Qlambda, Qunbound;
 static Lisp_Object Qsubr;
 Lisp_Object Qerror_conditions, Qerror_message, Qtop_level;
@@ -286,6 +290,16 @@ for example, (type-of 1) returns `integer'.  */)
 	return Qfont_entity;
       if (FONT_OBJECT_P (object))
 	return Qfont_object;
+
+#ifdef HAVE_XWIDGETS
+      if (XWIDGETP (object))
+    return Qxwidget;
+      if (XWIDGET_VIEW_P (object))
+    return Qxwidget_view;
+      if (GOBJECTP (object))
+    return Qgobject;
+#endif
+
       return Qvector;
 
     case Lisp_Float:
