@@ -98,6 +98,12 @@
                            :graphical t
                            :emacs-args '("-T" "emacs-debug")))))
 
+(xwidget-deftest xwgir-call-function ()
+  (should (equal 0 (car (parallel-get-result
+                         (parallel-start (lambda ()
+                                           (require 'xwidget)
+                                           (xwgir-call-function "GLib" "2.0" "strcmp0" "foo" "foo"))))))))
+
 (defun xwidget-interactive-tests ()
   "Interactively test Button ToggleButton and slider.
 
