@@ -656,78 +656,77 @@ GtkWidget* xwgir_create(char* class, char* namespace){
   
 }
 
-int
+Lisp_Object
 xwgir_convert_gobject_to_lisp (GIArgument *giarg,
-                               GIArgInfo *arginfo,
-                               Lisp_Object lisparg)
+                               GITypeInfo *type_info)
 {
-  GITypeInfo *typeinfo = g_arg_info_get_type (arginfo);
-  GITypeTag tag = g_type_info_get_tag (typeinfo);
+  GITypeTag tag = g_type_info_get_tag (type_info);
+  Lisp_Object ret;
   
   switch (tag)
   {
     /* Basic types */
   case GI_TYPE_TAG_VOID:
-    lisparg = Qnil;
+    ret = Qnil;
     break;
 
   case GI_TYPE_TAG_BOOLEAN:
-    lisparg = giarg->v_boolean ? Qt : Qnil;
+    ret = giarg->v_boolean ? Qt : Qnil;
     break;
 
   case GI_TYPE_TAG_INT8:
-    XSETFASTINT (lisparg, giarg->v_int8);
+    XSETFASTINT (ret, giarg->v_int8);
     break;
 
   case GI_TYPE_TAG_UINT8:
-    XSETFASTINT (lisparg, giarg->v_uint8);
+    XSETFASTINT (ret, giarg->v_uint8);
     break;
 
   case GI_TYPE_TAG_INT16:
-    XSETFASTINT (lisparg, giarg->v_int16);
+    XSETFASTINT (ret, giarg->v_int16);
     break;
 
   case GI_TYPE_TAG_UINT16:
-    XSETFASTINT (lisparg, giarg->v_uint16);
+    XSETFASTINT (ret, giarg->v_uint16);
     break;
 
   case GI_TYPE_TAG_INT32:
-    XSETFASTINT (lisparg, giarg->v_int32);
+    XSETFASTINT (ret, giarg->v_int32);
     break;
 
   case GI_TYPE_TAG_UINT32:
-    XSETFASTINT (lisparg, giarg->v_uint32);
+    XSETFASTINT (ret, giarg->v_uint32);
     break;
 
   case GI_TYPE_TAG_INT64:
-    XSETFASTINT (lisparg, giarg->v_int64);
+    XSETFASTINT (ret, giarg->v_int64);
     break;
 
   case GI_TYPE_TAG_UINT64:
-    XSETFASTINT (lisparg, giarg->v_uint64);
+    XSETFASTINT (ret, giarg->v_uint64);
     break;
 
   case GI_TYPE_TAG_FLOAT:
-    lisparg = make_float (giarg->v_float);
+    ret = make_float (giarg->v_float);
     break;
 
   case GI_TYPE_TAG_DOUBLE:
-    lisparg = make_float (giarg->v_double);
+    ret = make_float (giarg->v_double);
     break;
 
   case GI_TYPE_TAG_GTYPE:
-    XSETFASTINT (lisparg, giarg->v_int);
+    XSETFASTINT (ret, giarg->v_int);
     break;
 
   case GI_TYPE_TAG_UTF8:
   case GI_TYPE_TAG_FILENAME:
-    XSETSTRING (lisparg, giarg->v_string);
+    XSETSTRING (ret, giarg->v_string);
     break;
 
   /* Non-basic types; compare with G_TYPE_TAG_IS_BASIC */
   case GI_TYPE_TAG_ARRAY:       /* TODO */
-    lisparg = Qnil;
-    return -1;
+    ret = Qnil;
+    break;
 
   case GI_TYPE_TAG_INTERFACE:
   {
@@ -737,7 +736,7 @@ xwgir_convert_gobject_to_lisp (GIArgument *giarg,
     gobject->destructor = Qnil;
     gobject->type_tag = tag;
     gobject->object = giarg->v_pointer;
-    XSETGOBJECT (lisparg, gobject);
+    XSETGOBJECT (ret, gobject);
     break;
   }
 
@@ -748,20 +747,19 @@ xwgir_convert_gobject_to_lisp (GIArgument *giarg,
 
   /* Another basic type */
   case GI_TYPE_TAG_UNICHAR:     /* TODO */
-    lisparg = Qnil;
-    return -1;
+    ret = Qnil;
+    break;
   }
 
-  return 0;
+  return ret;
 }
 
 int
 xwgir_convert_lisp_to_gobject (GIArgument *giarg,
-                               GIArgInfo *arginfo,
+                               GITypeInfo *type_info,
                                Lisp_Object lisparg)
 {
-
-  GITypeTag   tag = g_type_info_get_tag (g_arg_info_get_type (arginfo));
+  GITypeTag tag = g_type_info_get_tag (type_info);
 
   switch (tag)
   {
@@ -877,6 +875,90 @@ refactor_attempt(){
 }
 #endif  /* 0 */
 
+Lisp_Object
+xwgir_call_function (GIFunctionInfo *fun_info,
+                     Lisp_Object arguments,
+                     gboolean method_p)
+{
+  Lisp_Object ret = Qnil;
+  GIArgument *in_args, *out_args;
+  GIArgument return_value;
+  GITypeInfo *type_info;
+  GError *error;
+  int in_len = XFASTINT (Flength (arguments));
+  int out_len = g_callable_info_get_n_args (fun_info) - in_len + (method_p ? 1 : 0);
+  /* TODO check out_len < 0 */
+
+  in_args = xmalloc (sizeof (GIArgument) * in_len);
+  out_args = xmalloc (sizeof (GIArgument) * in_len);
+
+  int i = 0;
+  if (method_p) {
+    in_args[0].v_pointer = XGOBJECT (XCAR (arguments))->object;
+    arguments = XCDR (arguments);
+    i++;
+  }
+  for (Lisp_Object tail = arguments; CONSP (tail); i++, tail = XCDR (tail)) {
+    type_info = g_arg_info_get_type (g_callable_info_get_arg (fun_info, i - (method_p ? 1 : 0)));
+    xwgir_convert_lisp_to_gobject (&in_args[i],
+                                   type_info,
+                                   XCAR (tail));
+  }
+
+  if (!g_function_info_invoke (fun_info,
+                               in_args, in_len,
+                               out_args, out_len,
+                               &return_value, &error)) {
+    /* TODO signal an error */
+    return Qnil;
+  }
+
+  for (; i < in_len + out_len; i++) {
+    type_info = g_arg_info_get_type (g_callable_info_get_arg (fun_info, i - (method_p ? 1 : 0)));
+    ret = Fcons (xwgir_convert_gobject_to_lisp (&out_args[i],
+                                                type_info),
+                 ret);
+  }
+  ret = Fnreverse (ret);
+  type_info = g_callable_info_get_return_type (fun_info);
+  ret = Fcons (xwgir_convert_gobject_to_lisp (&return_value, type_info),
+               ret);
+  
+  xfree (in_args);
+  xfree (out_args);
+  return ret;
+}
+
+DEFUN ("xwgir-call-function", Fxwgir_call_function, Sxwgir_call_function,
+       1, MANY, 0,
+       doc: /* Call function through GIR.
+usage: (xwgir-call-function NAMESPACE VERSION FUNCTION-NAME &rest args) */)
+  (ptrdiff_t nargs, Lisp_Object *args)
+{
+  Lisp_Object namespace = args[0];
+  Lisp_Object version = args[1];
+  Lisp_Object function_name = args[2];
+  Lisp_Object arguments = Qnil;
+  for (int i = nargs - 1; i >= 3; i--) {
+    arguments = Fcons (args[i], arguments);
+  }
+
+  CHECK_STRING (namespace);
+  CHECK_STRING (version);
+  CHECK_STRING (function_name);
+
+  Fxwgir_require_namespace (namespace, version);
+
+  GIRepository *g_irepository = g_irepository_get_default ();
+  char *namespace_ = SDATA (namespace);
+  char *function_name_ = SDATA (function_name);
+  GIFunctionInfo *fun_info;
+
+  fun_info = g_irepository_find_by_name (g_irepository, namespace_, function_name_);
+
+  return xwgir_call_function (fun_info, arguments, FALSE);
+}
+
 DEFUN ("xwgir-xwidget-call-method", Fxwgir_xwidget_call_method,  Sxwgir_xwidget_call_method,       3, 3, 0,
        doc:	/* call xwidget object method.*/)
   (Lisp_Object xwidget, Lisp_Object method, Lisp_Object arguments)
@@ -916,22 +998,16 @@ DEFUN ("xwgir-xwidget-call-method", Fxwgir_xwidget_call_method,  Sxwgir_xwidget_
     return Qnil;
   }
 
-  in_args[0].v_pointer = widget;
-  int i = 0;
-  for (Lisp_Object tail = arguments; CONSP (tail); i++, tail = XCDR (tail)) {
-    xwgir_convert_lisp_to_gobject (&in_args[i + 1], g_callable_info_get_arg (f_info, i), XCAR (tail));
-  }
+  Lisp_Object object;
+  struct Lisp_GObject *gobject = allocate_gobject ();
+  gobject->object = widget;
+  gobject->type_name = make_string ("Widget", 6);
+  gobject->destructor = Qnil;
+  gobject->type_tag = GI_TYPE_TAG_INTERFACE;
+  XSETGOBJECT (object, gobject);
+  arguments = Fcons (object, arguments);
 
-  if(!g_function_info_invoke (f_info,
-                              in_args, argscount + 1,
-                              NULL, 0,
-                              &return_value,
-                              &error)) {
-    printf("invokation error %s\n", error->message);
-    return Qnil;
-  }
-  
-  return Qt;
+  return xwgir_call_function (f_info, arguments, TRUE);
 }
 
  void
@@ -1668,6 +1744,7 @@ syms_of_xwidget (void)
 #endif
 
   defsubr (&Sxwgir_xwidget_call_method  );
+  defsubr (&Sxwgir_call_function);
   defsubr (&Sxwgir_require_namespace);
   defsubr (&Sxwidget_size_request  );
   defsubr (&Sdelete_xwidget_view);
