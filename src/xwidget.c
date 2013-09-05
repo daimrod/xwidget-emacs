@@ -739,9 +739,22 @@ xwgir_convert_gobject_to_lisp (GIArgument *giarg,
     XSETGOBJECT (ret, gobject);
     break;
   }
+  case GI_TYPE_TAG_GLIST:
+  case GI_TYPE_TAG_GSLIST:
+  {
+    GSList *list;
+    GITypeInfo *item_type_info = g_type_info_get_param_type (type_info, 0);
 
-  case GI_TYPE_TAG_GLIST:       /* TODO */
-  case GI_TYPE_TAG_GSLIST:      /* TODO */
+    for (list = giarg->v_pointer; list != NULL; list = g_slist_next (list)) {
+      GIArgument item;
+      item.v_pointer = list->data;
+      
+      ret = Fcons (xwgir_convert_gobject_to_lisp (&item, item_type_info), ret);
+    }
+    ret = Fnreverse (ret);
+    g_base_info_unref ( (GIBaseInfo *) item_type_info);
+    break;
+  }
   case GI_TYPE_TAG_GHASH:       /* TODO */
   case GI_TYPE_TAG_ERROR:       /* TODO */
 
