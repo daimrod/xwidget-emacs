@@ -710,10 +710,8 @@ xwgir_convert_gobject_to_lisp (GIArgument *giarg,
     XSETFASTINT (ret, giarg->v_int32);
     break;
 
-  case GI_TYPE_TAG_UINT32:
-    XSETFASTINT (ret, giarg->v_uint32);
-    break;
 
+  case GI_TYPE_TAG_UINT32:
   case GI_TYPE_TAG_INT64:
     XSETFASTINT (ret, giarg->v_int64);
     break;
@@ -768,9 +766,6 @@ xwgir_convert_gobject_to_lisp (GIArgument *giarg,
   }
   case GI_TYPE_TAG_GHASH:       /* TODO */
   case GI_TYPE_TAG_ERROR:       /* TODO */
-
-  /* Another basic type */
-  case GI_TYPE_TAG_UNICHAR:     /* TODO */
     ret = Qnil;
     break;
   }
@@ -816,6 +811,7 @@ xwgir_convert_lisp_to_gobject (GIArgument *giarg,
     giarg->v_int32 = XFASTINT(lisparg);
     break;
 
+  case GI_TYPE_TAG_UNICHAR:
   case GI_TYPE_TAG_UINT32:
     CHECK_NUMBER (lisparg);
     giarg->v_uint32 = XFASTINT(lisparg);
@@ -853,7 +849,6 @@ xwgir_convert_lisp_to_gobject (GIArgument *giarg,
   case GI_TYPE_TAG_ERROR:
   case GI_TYPE_TAG_INTERFACE:
   case GI_TYPE_TAG_VOID:
-  case GI_TYPE_TAG_UNICHAR:
   case GI_TYPE_TAG_GTYPE:
     //?? i dont know how to handle these yet TODO
     printf("failed in my lisp to gir arg conversion duties. sob!\n");
