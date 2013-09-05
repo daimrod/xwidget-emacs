@@ -170,6 +170,8 @@ gboolean webkit_osr_navigation_policy_decision_requested_callback(WebKitWebView 
                                                                   gpointer                   user_data);
 
 GtkWidget* xwgir_create(char* class, char* namespace);
+Lisp_Object xwgir_make_gobject (const char *type_name, Lisp_Object destructor,
+                                GITypeTag type_tag, gpointer object);
 static void
 send_xembed_ready_event (struct xwidget* xw, int xembedid);  
 DEFUN ("make-xwidget", Fmake_xwidget, Smake_xwidget, 7, 8, 0,
@@ -657,6 +659,20 @@ GtkWidget* xwgir_create(char* class, char* namespace){
 }
 
 Lisp_Object
+xwgir_make_gobject (const char *type_name, Lisp_Object destructor,
+                    GITypeTag type_tag, gpointer object)
+{
+    Lisp_Object ret;
+    struct Lisp_GObject *gobject = allocate_gobject ();
+    gobject->type_name = make_string (type_name, strlen (type_name));
+    gobject->destructor = destructor;
+    gobject->type_tag = type_tag;
+    gobject->object = object;
+    XSETGOBJECT (ret, gobject);
+    return ret;
+}
+
+Lisp_Object
 xwgir_convert_gobject_to_lisp (GIArgument *giarg,
                                GITypeInfo *type_info)
 {
@@ -730,13 +746,8 @@ xwgir_convert_gobject_to_lisp (GIArgument *giarg,
 
   case GI_TYPE_TAG_INTERFACE:
   {
-    struct Lisp_GObject *gobject = allocate_gobject();
-    const char *type_name = g_type_tag_to_string (tag);
-    gobject->type_name = make_string (type_name, strlen (type_name));
-    gobject->destructor = Qnil;
-    gobject->type_tag = tag;
-    gobject->object = giarg->v_pointer;
-    XSETGOBJECT (ret, gobject);
+    ret = xwgir_make_gobject (g_type_tag_to_string (tag), Qnil,
+                              tag, giarg->v_pointer);
     break;
   }
   case GI_TYPE_TAG_GLIST:
