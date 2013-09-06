@@ -765,6 +765,26 @@ xwgir_convert_gobject_to_lisp (GIArgument *giarg,
     break;
   }
   case GI_TYPE_TAG_GHASH:       /* TODO */
+  {
+    GITypeInfo *value_type_info, *key_type_info;
+    GHashTableIter hash_table_iter;
+    GIArgument key;
+    GIArgument value;
+
+    key_type_info = g_type_info_get_param_type (type_info, 0);
+    value_type_info = g_type_info_get_param_type (type_info, 1);
+
+    ret = Fmake_hash_table (0, NULL);
+    g_hash_table_iter_init (&hash_table_iter, (GHashTable *) giarg->v_pointer);
+    while (g_hash_table_iter_next (&hash_table_iter,
+                                   &key.v_pointer,
+                                   &value.v_pointer)) {
+      Fputhash (xwgir_convert_gobject_to_lisp (&key, key_type_info),
+                xwgir_convert_gobject_to_lisp (&value, value_type_info),
+                ret);
+    }
+    break;
+  }
   case GI_TYPE_TAG_ERROR:       /* TODO */
     ret = Qnil;
     break;
