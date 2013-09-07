@@ -734,7 +734,7 @@ xwgir_convert_gobject_to_lisp (GIArgument *giarg,
 
   case GI_TYPE_TAG_UTF8:
   case GI_TYPE_TAG_FILENAME:
-    XSETSTRING (ret, giarg->v_string);
+    ret = make_string (giarg->v_string, strlen (giarg->v_string));
     break;
 
   /* Non-basic types; compare with G_TYPE_TAG_IS_BASIC */
@@ -859,7 +859,7 @@ xwgir_convert_lisp_to_gobject (GIArgument *giarg,
   case GI_TYPE_TAG_UTF8:
   case GI_TYPE_TAG_FILENAME:
     CHECK_STRING (lisparg);
-    giarg->v_string = SDATA(lisparg);
+    giarg->v_string = strdup (SDATA(lisparg));
     break;
 
   case GI_TYPE_TAG_ARRAY:
@@ -937,6 +937,7 @@ xwgir_call_function (GIFunctionInfo *fun_info,
     arguments = XCDR (arguments);
     i++;
   }
+
   for (Lisp_Object tail = arguments; CONSP (tail); i++, tail = XCDR (tail)) {
     type_info = g_arg_info_get_type (g_callable_info_get_arg (fun_info, i - (method_p ? 1 : 0)));
     xwgir_convert_lisp_to_gobject (&in_args[i],
