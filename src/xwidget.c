@@ -949,8 +949,8 @@ xwgir_call_function (GIFunctionInfo *fun_info,
                                in_args, in_len,
                                out_args, out_len,
                                &return_value, &error)) {
-    /* TODO signal an error */
-    return Qnil;
+    /* TODO signal correct error */
+    xsignal (Qerror, make_string ("g_function_info_invoke", 22));
   }
 
   for (; i < in_len + out_len; i++) {
@@ -995,6 +995,9 @@ usage: (xwgir-call-function NAMESPACE VERSION FUNCTION-NAME &rest args) */)
   GIFunctionInfo *fun_info;
 
   fun_info = g_irepository_find_by_name (g_irepository, namespace_, function_name_);
+  if (fun_info == NULL) {
+    xsignal (Qvoid_function, function_name);
+  }
 
   return xwgir_call_function (fun_info, arguments, FALSE);
 }
