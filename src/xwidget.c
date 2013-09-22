@@ -876,13 +876,19 @@ xwgir_convert_lisp_to_gobject (GIArgument *giarg,
     giarg->v_pointer = g_slist_reverse (list);
     break;
   }
-  case GI_TYPE_TAG_GHASH:
-  case GI_TYPE_TAG_ERROR:
   case GI_TYPE_TAG_INTERFACE:
+    CHECK_GOBJECT (lisparg);
+    giarg->v_pointer = XGOBJECT (lisparg)->object;
+    break;
+    
   case GI_TYPE_TAG_VOID:
-  case GI_TYPE_TAG_GTYPE:
-  case GI_TYPE_TAG_ARRAY:       /* TODO */
+    giarg->v_pointer = NULL;
+    break;
 
+  case GI_TYPE_TAG_GHASH:       /* TODO */
+  case GI_TYPE_TAG_ERROR:       /* TODO */
+  case GI_TYPE_TAG_ARRAY:       /* TODO */
+  case GI_TYPE_TAG_GTYPE:       /* TODO */
     //?? i dont know how to handle these yet TODO
     printf("failed in my lisp to gir arg conversion duties. sob!\n");
     return -1;
