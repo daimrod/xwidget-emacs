@@ -710,7 +710,6 @@ xwgir_convert_gobject_to_lisp (GIArgument *giarg,
     XSETFASTINT (ret, giarg->v_int32);
     break;
 
-
   case GI_TYPE_TAG_UINT32:
   case GI_TYPE_TAG_INT64:
     XSETFASTINT (ret, giarg->v_int64);
@@ -885,7 +884,23 @@ xwgir_convert_lisp_to_gobject (GIArgument *giarg,
     giarg->v_pointer = NULL;
     break;
 
-  case GI_TYPE_TAG_GHASH:       /* TODO */
+  case GI_TYPE_TAG_GHASH:
+  {
+    struct Lisp_Hash_Table *h = XHASH_TABLE (lisparg);
+    GITypeInfo *value_type_info, *key_type_info;
+    GHashTable *ghash_table = g_hash_table_new (NULL, NULL);
+    ptrdiff_t i;
+    for (i = 0; i < HASH_TABLE_SIZE (h); i++) {
+      GIArgument key;
+      GIArgument value;
+      xwgir_convert_lisp_to_gobject (&key, key_type_info, HASH_KEY (h, i));
+      xwgir_convert_lisp_to_gobject (&value, value_type_info, HASH_VALUE (h, i));
+      g_hash_table_insert (ghash_table, key.v_pointer, value.v_pointer);
+    }
+    giarg->v_pointer = ghash_table;
+    break;
+  }
+
   case GI_TYPE_TAG_ERROR:       /* TODO */
   case GI_TYPE_TAG_ARRAY:       /* TODO */
   case GI_TYPE_TAG_GTYPE:       /* TODO */
