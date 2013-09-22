@@ -764,7 +764,7 @@ xwgir_convert_gobject_to_lisp (GIArgument *giarg,
     g_base_info_unref ( (GIBaseInfo *) item_type_info);
     break;
   }
-  case GI_TYPE_TAG_GHASH:       /* TODO */
+  case GI_TYPE_TAG_GHASH:
   {
     GITypeInfo *value_type_info, *key_type_info;
     GHashTableIter hash_table_iter;
@@ -862,14 +862,27 @@ xwgir_convert_lisp_to_gobject (GIArgument *giarg,
     giarg->v_string = strdup (SDATA(lisparg));
     break;
 
-  case GI_TYPE_TAG_ARRAY:
   case GI_TYPE_TAG_GLIST:
   case GI_TYPE_TAG_GSLIST:
+  {
+    CHECK_LIST (lisparg);
+    GITypeInfo *item_type_info = g_type_info_get_param_type (type_info, 0);
+    GSList *list = NULL;
+    for (Lisp_Object tail = lisparg; CONSP (tail); tail = XCDR (tail)) {
+      GIArgument item;
+      xwgir_convert_lisp_to_gobject (&item, item_type_info, XCAR (tail));
+      list = g_slist_prepend (list, item.v_pointer);
+    }
+    giarg->v_pointer = g_slist_reverse (list);
+    break;
+  }
   case GI_TYPE_TAG_GHASH:
   case GI_TYPE_TAG_ERROR:
   case GI_TYPE_TAG_INTERFACE:
   case GI_TYPE_TAG_VOID:
   case GI_TYPE_TAG_GTYPE:
+  case GI_TYPE_TAG_ARRAY:       /* TODO */
+
     //?? i dont know how to handle these yet TODO
     printf("failed in my lisp to gir arg conversion duties. sob!\n");
     return -1;
