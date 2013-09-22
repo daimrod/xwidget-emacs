@@ -1030,7 +1030,7 @@ usage: (xwgir-call-function NAMESPACE VERSION FUNCTION-NAME &rest args) */)
 
   fun_info = g_irepository_find_by_name (g_irepository, namespace_, function_name_);
   if (fun_info == NULL) {
-    xsignal (Qvoid_function, function_name);
+    xsignal (Qvoid_function, Fcons (Fintern (function_name, Qnil), Qnil));
   }
 
   return xwgir_call_function (fun_info, arguments, FALSE);

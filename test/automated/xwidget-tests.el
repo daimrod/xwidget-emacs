@@ -106,7 +106,14 @@
   (should (equal "FOO" (car (parallel-get-result
                              (parallel-start (lambda ()
                                                (require 'xwidget)
-                                               (xwgir-call-function "GLib" "2.0" "strup" "foo"))))))))
+                                               (xwgir-call-function "GLib" "2.0" "strup" "foo")))))))
+  (should (equal (parallel-get-result
+                  (parallel-start (lambda ()
+                                    (require 'xwidget)
+                                    (xwgir-call-function "GLib" "2.0" "foobarbaz"))))
+                 (condition-case err
+                     (foobarbaz)
+                   (error err)))))
 
 (defun xwidget-interactive-tests ()
   "Interactively test Button ToggleButton and slider.
